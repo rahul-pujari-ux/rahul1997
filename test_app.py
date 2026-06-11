@@ -33,7 +33,7 @@ class TestAppFunctions(unittest.TestCase):
 
     def test_dashboard_no_events_initially(self):
         response = self.client.get('/')
-        self.assertIn(b'No events for today', response.data)
+        self.assertIn(b'No events scheduled for this date', response.data)
 
     def test_dashboard_shows_event_when_exists(self):
         with app.app_context():
@@ -46,6 +46,34 @@ class TestAppFunctions(unittest.TestCase):
         self.assertIn(b'Test Event', response.data)
         self.assertIn(b'14:00', response.data)
         self.assertIn(b'Test description', response.data)
+
+    def test_dashboard_with_date_parameter(self):
+        with app.app_context():
+            event = Event(title='Future Event', date='2026-06-20', time='15:00', description='Future event')
+            db.session.add(event)
+            db.session.commit()
+
+        response = self.client.get('/?date=2026-06-20')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Future Event', response.data)
+        self.assertIn(b'2026-06-20', response.data)
+
+    def test_dashboard_date_picker_displays(self):
+        response = self.client.get('/')
+        self.assertIn(b'datepicker', response.data)
+        self.assertIn(b'Select Date:', response.data)
+
+    def test_dashboard_filters_events_by_query_date(self):
+        with app.app_context():
+            event1 = Event(title='Event 1', date='2026-06-11', time='10:00', description='First')
+            event2 = Event(title='Event 2', date='2026-06-12', time='11:00', description='Second')
+            db.session.add(event1)
+            db.session.add(event2)
+            db.session.commit()
+
+        response = self.client.get('/?date=2026-06-12')
+        self.assertIn(b'Event 2', response.data)
+        self.assertNotIn(b'Event 1', response.data)
 
     def test_get_sessions_returns_json(self):
         response = self.client.get('/api/sessions/2026-06-11')

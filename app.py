@@ -16,8 +16,9 @@ class Event(db.Model):
 @app.route('/')
 def dashboard():
     today = datetime.now().strftime('%Y-%m-%d')
-    events = Event.query.filter_by(date=today).all()
-    return render_template('dashboard.html', events=events, today=today)
+    selected_date = request.args.get('date', today)
+    events = Event.query.filter_by(date=selected_date).all()
+    return render_template('dashboard.html', events=events, today=today, selected_date=selected_date)
 
 @app.route('/api/sessions/<date>')
 def get_sessions(date):
