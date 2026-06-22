@@ -1,0 +1,32 @@
+**Decision Logic — two paths:**
+
+*Normal Path (Agent 3):*
+- Score-based tiering: risk ≤ 40 → Approve, ≤ 65 → Manual Review, > 65 → Reject
+- Confidence scoring based on proximity to boundary, anomaly count, completeness
+- `recommend_revised_loan_amount` for borderline approvals
+
+*Hard Reject Path (conditional routing):*
+- Unemployed → immediate rejection with policy reason
+- Critical risk → immediate rejection with specific risk factors from Agent 2
+- Both cases: `risk_score = 95.0`, `confidence_level = 0.98`
+
+**Explainability:**
+- Every response includes a plain-English `explanation` field
+- `key_decision_factors` lists top factors with specific values
+- LangChain pre-screening adds a human-readable officer-style narrative at the very start
+- Composite risk score broken down by component
+
+**Auditability:**
+- Unique `CASE-YYYYMMDD-XXXXXXXX` case ID on every case
+- Separate `AUDIT-XXXXXXXXXXXX` audit log ID per decision
+- `processing_time_seconds` tracked end-to-end
+- UTC timestamp on every decision
+- `is_ai_decision: true` and `requires_human_override` flags in audit entry
+- Hard-reject path is traceable: `agent_reasoning` field flags "Hard reject fast path — Decision Agent bypassed per conditional routing"
+- SSE stream shows `⚡ Agent 3: Bypassed — hard reject criteria met` — transparent to the UI
+
+**Manual Review Handling:**
+- `LoanDecision.MANUAL_REVIEW` as a first-class classification
+- Notification text varies by decision type
+- `requires_human_override` flag in audit entry
+

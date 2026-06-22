@@ -59,11 +59,19 @@ class FinancialRiskAnalysis(BaseModel):
 
 class LoanDecision(BaseModel):
     case_id: str
+    audit_log_id: str
     decision: DecisionStatus
     risk_score: float
     confidence_level: float
     key_decision_factors: List[str]
     explanation: str
+    processing_time_seconds: float = 0.0
+    requires_human_override: bool = False
+    is_ai_decision: bool = True
+    composite_risk_breakdown: dict = {}
+    agent_reasoning: Optional[str] = None
+    recommended_loan_amount: Optional[float] = None
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 class ComplianceAction(BaseModel):
     action_taken: str
@@ -79,6 +87,11 @@ class LoanApplicationResponse(BaseModel):
     risk_score: Optional[float]
     confidence_level: Optional[float]
     explanation: Optional[str]
+    audit_log_id: Optional[str] = None
+    processing_time_seconds: Optional[float] = None
+    requires_human_override: Optional[bool] = None
+    composite_risk_breakdown: Optional[dict] = None
+    agent_reasoning: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -88,5 +101,13 @@ class ApplicationStatus(BaseModel):
     decision: Optional[str]
     applicant_id: str
     loan_amount: float
+    audit_log_id: Optional[str] = None
+    processing_time_seconds: Optional[float] = None
+    requires_human_override: Optional[bool] = None
+    composite_risk_breakdown: Optional[dict] = None
+    agent_reasoning: Optional[str] = None
+    risk_score: Optional[float] = None
+    confidence_level: Optional[float] = None
+    explanation: Optional[str] = None
     created_at: datetime
     updated_at: datetime

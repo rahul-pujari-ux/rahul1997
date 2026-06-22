@@ -57,12 +57,17 @@ async def submit_loan_application(request: LoanApplicationRequest):
         result = orchestrator.process_application(application_data)
 
         response = LoanApplicationResponse(
-            case_id=result["case_id"],
+            case_id=result.get("case_id", ""),
             status="completed",
             decision=DecisionStatus(result["decision"]["decision"]),
             risk_score=result["decision"]["risk_score"],
             confidence_level=result["decision"]["confidence_level"],
             explanation=result["decision"]["explanation"],
+            audit_log_id=result["decision"].get("audit_log_id", ""),
+            processing_time_seconds=result.get("processing_time_seconds", 0.0),
+            requires_human_override=result["decision"].get("requires_human_override", False),
+            composite_risk_breakdown=result["decision"].get("composite_risk_breakdown", {}),
+            agent_reasoning=result["decision"].get("agent_reasoning"),
             created_at=datetime.now(),
             updated_at=datetime.now()
         )
@@ -77,7 +82,7 @@ async def submit_loan_application(request: LoanApplicationRequest):
 
 @app.get("/application-status/{case_id}", response_model=ApplicationStatus)
 async def get_application_status(case_id: str):
-    """Get status of a loan application"""
+    """Get status of a loan application with full audit trail"""
     try:
         app_data = get_application(case_id)
 
@@ -90,6 +95,14 @@ async def get_application_status(case_id: str):
             decision=app_data.get("decision"),
             applicant_id=app_data.get("applicant_id"),
             loan_amount=app_data.get("loan_amount"),
+            audit_log_id=app_data.get("audit_log_id"),
+            processing_time_seconds=app_data.get("processing_time_seconds"),
+            requires_human_override=app_data.get("requires_human_override"),
+            composite_risk_breakdown=app_data.get("composite_risk_breakdown"),
+            agent_reasoning=app_data.get("agent_reasoning"),
+            risk_score=app_data.get("risk_score"),
+            confidence_level=app_data.get("confidence_level"),
+            explanation=app_data.get("explanation"),
             created_at=datetime.fromisoformat(app_data.get("created_at")),
             updated_at=datetime.fromisoformat(app_data.get("updated_at"))
         )

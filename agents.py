@@ -8,6 +8,28 @@ logger = logging.getLogger(__name__)
 
 client = Anthropic(api_key=settings.anthropic_api_key)
 
+def check_hard_reject_criteria(application_data: dict, financial_risk: dict = None) -> tuple[bool, str]:
+    """Check for hard reject criteria (unemployment or critical risk)
+
+    Returns: (should_hard_reject, reason)
+    """
+    employment_type = application_data.get("employment_type", "").lower()
+
+    if employment_type == "unemployed":
+        return True, "Policy violation: Unemployed applicants are not eligible for loans"
+
+    if financial_risk:
+        dti_ratio = financial_risk.get("debt_to_income_ratio", 0)
+        credit_score_risk = financial_risk.get("credit_score_risk_level", "")
+
+        if dti_ratio > 50:
+            return True, f"Critical risk: Debt-to-income ratio {dti_ratio:.1f}% exceeds maximum threshold of 50%"
+
+        if credit_score_risk == "very_high" and dti_ratio > 40:
+            return True, "Critical risk: Very high credit risk combined with elevated DTI ratio"
+
+    return False, ""
+
 APPLICANT_TOOLS = [
     {
         "name": "get_applicant_profile",
@@ -172,9 +194,17 @@ Use the analyze_financial_risk tool to calculate risk metrics and provide detail
 
     return result
 
-def run_decision_agent(applicant_profile: dict, financial_risk: dict, credit_score: int, age: int) -> dict:
-    """Run loan decision agent"""
-    prompt = f"""Make final loan decision based on all factors.
+def run_decision_agent(applicant_profile: dict, financial_risk: dict, credit_score: int, age: int,
+                      hard_reject: bool = False, hard_reject_reason: str = "") -> dict:
+    """Run loan decision agent with hard reject path"""
+    if hard_reject:
+        prompt = f"""Apply hard reject policy: {hard_reject_reason}
+
+This is a policy-based immediate rejection. Use synthesize_decision tool with:
+- hard_reject: true
+- hard_reject_reason: {hard_reject_reason}"""
+    else:
+        prompt = f"""Make final loan decision using score-based tiering.
 
 Profile Analysis:
 - Income Stability: {applicant_profile['income_stability_score']}/100
@@ -185,6 +215,11 @@ Financial Risk Analysis:
 - Credit Risk: {financial_risk['credit_score_risk_level']}
 - Loan Risk: {financial_risk['loan_amount_risk']}
 - Anomalies: {financial_risk['anomaly_detected']}
+
+Decision Logic:
+- Risk Score ≤ 40: APPROVED
+- Risk Score ≤ 65: MANUAL_REVIEW (requires human officer review)
+- Risk Score > 65: REJECTED
 
 Use synthesize_decision tool to make the final decision."""
 
@@ -206,6 +241,8 @@ Use synthesize_decision tool to make the final decision."""
             "Acceptable DTI ratio",
             "Decent credit score"
         ],
+        "composite_risk_breakdown": {},
+        "agent_reasoning": None,
         "explanation": "Application approved based on strong financial profile and acceptable risk metrics",
         "raw_response": response
     }
