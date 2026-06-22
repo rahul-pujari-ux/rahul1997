@@ -1,0 +1,8 @@
+anthropic
+fastapi
+uvicorn
+streamlit
+python-dotenv
+requests
+pydantic
+pydantic[email]
